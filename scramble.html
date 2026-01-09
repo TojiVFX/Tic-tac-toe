@@ -1,0 +1,26 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Word Scramble</title>
+<style>
+body{text-align:center;font-family:sans-serif;background:#111;color:#fff}
+input,button{padding:10px;font-size:18px}
+</style>
+</head>
+<body>
+<h2>Word Scramble</h2>
+<p id="scrambled"></p>
+<input id="guess" placeholder="Your guess">
+<button onclick="check()">Check</button>
+<p id="msg"></p>
+<script>
+const words=["anime","github","javascript","gaming","future"]
+let word=words[Math.floor(Math.random()*words.length)]
+scrambled.textContent=word.split('').sort(()=>0.5-Math.random()).join('')
+function check(){
+ msg.textContent=guess.value===word?"Correct! 🎉":"Try again"
+}
+</script>
+</body>
+</html>
