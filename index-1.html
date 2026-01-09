@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe – AI Mode</title>
+
+<style>
+:root{
+  --neon:#00ffff;
+  --bg:#0f0f0f;
+  --glass:rgba(255,255,255,0.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Poppins,system-ui,sans-serif;
+  background:radial-gradient(circle at top,#111,#000);
+  color:white;
+  text-align:center;
+  user-select:none;
+}
+
+h1{
+  margin-top:20px;
+  text-shadow:0 0 15px var(--neon);
+}
+
+.back-btn{
+  position:fixed;top:12px;left:12px;
+  padding:6px 16px;
+  border-radius:14px;
+  border:1px solid var(--neon);
+  background:var(--glass);
+  color:var(--neon);
+  font-weight:600;
+  cursor:pointer;
+  transition:.3s;
+}
+.back-btn:hover{background:var(--neon);color:#000}
+
+.game-container{margin-top:30px;display:flex;flex-direction:column;align-items:center}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3,100px);
+  gap:12px;
+  padding:20px;
+  border-radius:18px;
+  background:var(--glass);
+  backdrop-filter:blur(12px);
+  box-shadow:0 0 25px rgba(0,255,255,.5);
+}
+
+.cell{
+  width:100px;height:100px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.2em;
+  border-radius:16px;
+  cursor:pointer;
+  background:#1a1a1a;
+  transition:.25s;
+}
+.cell:hover{transform:scale(1.08);background:#222}
+.cell.x{color:#ff4d4d}
+.cell.o{color:#2ecc71}
+.winner{background:#ffd700!important;color:#000!important}
+
+.message{margin-top:14px;font-size:1.2em}
+
+.start-btn,.retry-btn{
+  margin-top:15px;
+  padding:10px 28px;
+  border-radius:14px;
+  border:none;
+  background:var(--neon);
+  color:#000;
+  font-weight:700;
+  cursor:pointer;
+  transition:.3s;
+}
+.start-btn:hover,.retry-btn:hover{transform:scale(1.1)}
+
+.game-over-panel{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.92);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  opacity:0;
+  pointer-events:none;
+  transition:.4s;
+}
+.game-over-panel.active{opacity:1;pointer-events:auto}
+
+.footer{
+  position:fixed;
+  bottom:10px;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:18px;
+  font-size:1.05em;
+  color:var(--neon);
+}
+
+@media(max-width:420px){
+  .grid{grid-template-columns:repeat(3,80px)}
+  .cell{width:80px;height:80px;font-size:1.8em}
+}
+</style>
+</head>
+
+<body>
+<button class="back-btn" onclick="history.back()">↩ Back</button>
+
+<h1>⭕ Tic Tac Toe ❌</h1>
+<p>Beat the AI if you can 😏</p>
+
+<div class="game-container">
+  <button class="start-btn" id="startBtn">Start Match</button>
+
+  <div class="grid" id="grid" style="display:none"></div>
+  <p class="message" id="msg"></p>
+
+  <div class="game-over-panel" id="over">
+    <h2 id="overText"></h2>
+    <button class="retry-btn" id="retryBtn">Play Again</button>
+  </div>
+</div>
+
+<div class="footer">
+  <span>🏆 <span id="wins">0</span></span>
+  <span>❌ <span id="losses">0</span></span>
+  <span>🤝 <span id="draws">0</span></span>
+</div>
+
+<script>
+let board = Array(9).fill(null);
+let active = false;
+
+let stats = JSON.parse(localStorage.getItem("tttStats")) || {wins:0,losses:0,draws:0};
+const wEl=document.getElementById("wins");
+const lEl=document.getElementById("losses");
+const dEl=document.getElementById("draws");
+
+function updateStats(){
+  wEl.textContent=stats.wins;
+  lEl.textContent=stats.losses;
+  dEl.textContent=stats.draws;
+  localStorage.setItem("tttStats",JSON.stringify(stats));
+}
+updateStats();
+
+const grid=document.getElementById("grid");
+const msg=document.getElementById("msg");
+const over=document.getElementById("over");
+const overText=document.getElementById("overText");
+
+document.getElementById("startBtn").onclick=()=>start();
+document.getElementById("retryBtn").onclick=()=>start();
+
+function start(){
+  board.fill(null);
+  active=true;
+  grid.innerHTML="";
+  grid.style.display="grid";
+  over.classList.remove("active");
+  for(let i=0;i<9;i++){
+    let c=document.createElement("div");
+    c.className="cell";
+    c.onclick=()=>move(i,c);
+    grid.appendChild(c);
+  }
+  msg.textContent=Math.random()<.6?"AI starts":"Your turn";
+  if(msg.textContent==="AI starts") setTimeout(ai,400);
+}
+
+function move(i,c){
+  if(!active||board[i])return;
+  board[i]="X";c.textContent="X";c.classList.add("x");
+  if(check("X"))return end("🎉 You Win!",()=>stats.wins++);
+  if(full())return end("🤝 Draw",()=>stats.draws++);
+  msg.textContent="AI thinking...";
+  setTimeout(ai,350);
+}
+
+function ai(){
+  if(!active)return;
+  let i=best("O")??best("X")??rand();
+  board[i]="O";
+  let c=grid.children[i];
+  c.textContent="O";c.classList.add("o");
+  if(check("O"))return end("🤖 You Lose",()=>stats.losses++);
+  if(full())return end("🤝 Draw",()=>stats.draws++);
+  msg.textContent="Your turn";
+}
+
+function best(p){
+  for(let i=0;i<9;i++){
+    if(!board[i]){
+      board[i]=p;
+      if(check(p)){board[i]=null;return i}
+      board[i]=null;
+    }
+  }
+}
+function rand(){
+  let e=board.map((v,i)=>v?null:i).filter(v=>v!==null);
+  return e[Math.random()*e.length|0];
+}
+
+function check(p){
+  const w=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return w.some(x=>x.every(i=>board[i]===p));
+}
+function full(){return !board.includes(null)}
+
+function end(t,cb){
+  active=false;
+  cb();updateStats();
+  overText.textContent=t;
+  over.classList.add("active");
+}
+</script>
+</body>
+</html>
